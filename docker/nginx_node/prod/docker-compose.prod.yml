@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+
+  database:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: database
+    restart: always
+    environment:
+      MYSQL_DATABASE: fullcycle
+      MYSQL_ROOT_PASSWORD: fullcycle
+    tty: true
+    ports:
+      - 3306:3306
+    networks:
+      - fullcycle
+
+  api:
+#     image: rafaelcarvalhocaetano/challenge-api
+    build: ./api
+    entrypoint: dockerize -wait tcp://database:3306 -timeout 20s docker-entrypoint.sh node index.js
+    networks:
+      - fullcycle
+    tty: true
+    volumes:
+      - ./api:/app/
+      - /app/node_modules
+    depends_on:
+      - database
+
+  nginx:
+    build: ./nginx
+#     image: rafaelcarvalhocaetano/challenge-nginx
+    ports:
+      - 8080:80
+    depends_on:
+      - api
+    networks:
+      - fullcycle
+
+
+volumes:
+  portinari_app:
+
+networks:
+  fullcycle:
+    driver: bridge

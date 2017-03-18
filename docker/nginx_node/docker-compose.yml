@@ -1,0 +1,65 @@
+version: '3'
+
+services:
+  api:
+    build: ./api
+    container_name: api
+    entrypoint: wait-for databasemysql:3306 -t 40 -- node index.js
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    links:
+      - databasemysql
+    networks:
+      - fullcycle
+    depends_on:
+      - databasemysql
+
+
+  databasemysql:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: databasemysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: fullcycle
+      MYSQL_ROOT_PASSWORD: fullcycle
+      MYSQL_PASSWORD: fullcycle
+    ports:
+      - 3306:3306
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init-script.sql
+    networks:
+      - fullcycle
+    cap_add: 
+      - SYS_NICE
+    healthcheck: 
+       interval: 30s
+       timeout: 20s
+       retries: 6
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - 8080:80
+    links:
+      - api
+      - databasemysql
+    depends_on:
+      - api
+      - databasemysql
+    networks:
+      - fullcycle
+
+
+volumes:
+  volume_node:
+    driver: local
+
+
+networks:
+  fullcycle:
+    driver: bridge
